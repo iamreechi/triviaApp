@@ -30,21 +30,28 @@ def create_app(test_config=None):
   Set up CORS. Allow '*' for origins. Delete the sample route
   after completing the TODOs
   '''
-    cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+    cors =  CORS(app, resources={r"/api/*": {"origins": "*"}})  #CORS(app, resources={r"/api/*": {"origins": "*"}}) 
 
+    # @app.after_request
+    # def after_request(response):
+    #     '''
+    #     Use the after_request decorator to set Access-Control-Allow
+    #     '''
+    #     response.headers.add('Access-Control-Allow-Headers',
+    #                          'Content-Type, Authorization')
+    #     response.headers.add('Access-Control-Allow-Methods',
+    #                          'GET, POST, PATCH, DELETE, OPTIONS')
+    #     response.headers.add('Access-Control-Allow-Credentials', 'true')
+    #     return response
     @app.after_request
     def after_request(response):
-        '''
-        Use the after_request decorator to set Access-Control-Allow
-        '''
         response.headers.add('Access-Control-Allow-Headers',
-                             'Content-Type, Authorization')
+                             'Content-Type,Authorization,true')
         response.headers.add('Access-Control-Allow-Methods',
-                             'GET, POST, PATCH, DELETE, OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
+                             'GET,PATCH,POST,DELETE,OPTIONS')
         return response
 
-    @app.route('/categories', methods=['GET'])
+    @app.route('api/categories', methods=['GET'])
     def get_categories():
         '''
         Create an endpoint to handle GET requests
@@ -67,40 +74,36 @@ def create_app(test_config=None):
         except Exception:
             abort(422)
 
-    @app.route('/questions', methods=['GET'])
+    @app.route('api/questions')
     def get_questions():
-        '''
-        Create an endpoint to handle GET requests for questions,
-        including pagination (every 10 questions).
-        This endpoint should return a list of questions,
-        number of total questions, current category, categories.
-        TEST: At this point, when you start the application
-        you should see questions and categories generated,
-        ten questions per page and pagination at the bottom of the
-        screen for three pages.
-        Clicking on the page numbers should update the questions.
-        '''
+        try:
+            # get all questions
+            selection = Question.query.order_by(Question.id).all()
+            # get the total num of questions
+            totalQuestions = len(selection)
+            # get current questions in a page (10q)
+            currentQuestions = paginate(request, selection)
 
-        selection = Question.query.order_by(Question.id).all()
-        current_questions = paginate(request, selection)
+            # if the page number is not found
+            if (len(currentQuestions) == 0):
+                abort(404)
 
-        print(len(current_questions))
+            # get all categories
+            categories = Category.query.all()
+            categoriesDict = {}
+            for category in categories:
+                categoriesDict[category.id] = category.type
 
-        if (len(current_questions) == 0):
-            abort(404)
-
-        categories = {
-            category.id: category.type for category in Category.query.all()}
-
-        return jsonify({
-            'success': True,
-            'questions': current_questions,
-            'total_questions': len(Question.query.all()),
-            'current_category': [],
-            'categories': categories
-        })
-
-    @app.route('/questions/<int:question_id>', methods=['DELETE'])
+            return jsonify({
+                'success': True,
+                'questions': currentQuestions,
+                'total_questions': totalQuestions,
+                'categories': categoriesDict
+            })
+        except Exception as e:
+            print(e)
+            abort(400)
+    @app.route('api/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
         '''
         Create an endpoint to DELETE question using a question ID.
@@ -127,7 +130,7 @@ def create_app(test_config=None):
         except Exception:
             abort(422)
 
-    @app.route('/questions', methods=['POST'])
+    @app.route('api/questions', methods=['POST'])
     def create_question():
         '''
         Create an endpoint to POST a new question,
@@ -192,7 +195,7 @@ def create_app(test_config=None):
         except Exception:
             abort(422)
 
-    @app.route('/categories/<int:category_id>/questions', methods=['GET'])
+    @app.route('api/categories/<int:category_id>/questions', methods=['GET'])
     def get_questions_categories(category_id):
         '''
         Create a GET endpoint to get questions based on category.
@@ -220,7 +223,7 @@ def create_app(test_config=None):
             'current_category': current_category.format()
         })
 
-    @app.route('/quizzes', methods=['POST'])
+    @app.route('api/quizzes', methods=['POST'])
     def get_quizzes():
         '''
         Create a POST endpoint to get questions to play the quiz.
